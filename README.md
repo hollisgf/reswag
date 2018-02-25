@@ -18,7 +18,7 @@ Various scripts have been created to demonstrate applications of the R-W model
 to many-outcome situations (primarily, examples of language learning taken
 from research performed by Harald Baayen and colleagues).
 
-## Example 1 - segmentation without comprehension
+## Example 1 - comprehension without segmentation
 The Rescorla-Wagner model can explain infant attention in statistical learning
 paradigms (see Baayen, Shaoul, Willits, & Ramscar, 2016). Changes in infant
 attention correspond to high-surprise phoneme sequences in a speech stream.
