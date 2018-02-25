@@ -1,0 +1,8 @@
+### this is a comment
+this is the first line of text
+here is a second line
+and the third line
+---END.OF.DOCUMENT---
+this is the first line of a second document
+you get the picture
+---END.OF.DOCUMENT---
