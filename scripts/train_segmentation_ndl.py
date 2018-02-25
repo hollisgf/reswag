@@ -7,6 +7,12 @@ being able to identify word boundaries in unsegmented text. For details, see:
 
 Baayen, R. H., Shaoul, C., Willits, J., & Ramscar, M. (2016). Comprehension without segmentation: A proof of concept with naive discriminative learning. Language, Cognition and Neuroscience, 31(1), 106-128.
 Chicago	
+
+Author: Geoff Hollis
+email : hollis-at-ualberta-dot-ca
+
+It has been released under the Creative Commons Attribution 4.0 International
+license: http://creativecommons.org/licenses/by/4.0/ .
 """
 import sys, argparse, math, scipy.stats
 sys.path.append(".")

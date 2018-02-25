@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 """
 Tools for doing word segmentation with NDL
+
+Author: Geoff Hollis
+email : hollis-at-ualberta-dot-ca
+
+It has been released under the Creative Commons Attribution 4.0 International
+license: http://creativecommons.org/licenses/by/4.0/ .
 """
 import sys, argparse
 sys.path.append(".")

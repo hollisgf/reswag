@@ -8,6 +8,12 @@ Contains tools for:
   * Converting text to an iterable stream of (cue, outcome) learning events.
 
 Baayen, R. H., Milin, P., Durdevic, D. F., Hendrix, P., & Marelli, M. (2011). An amorphous model for morphological processing in visual comprehension based on naive discriminative learning. Psychological review, 118(3), 438.
+
+Author: Geoff Hollis
+email : hollis-at-ualberta-dot-ca
+
+It has been released under the Creative Commons Attribution 4.0 International
+license: http://creativecommons.org/licenses/by/4.0/ .
 """
 
 

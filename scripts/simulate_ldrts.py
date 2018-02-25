@@ -5,6 +5,12 @@ reciprocal of the summed association strengths between cues available within a
 word and the word itself. For details, see Baayen (2010):
 
 Baayen, R. H. (2010). Demythologizing the word frequency effect: A discriminative learning perspective. The Mental Lexicon, 5(3), 436-461.
+
+Author: Geoff Hollis
+email : hollis-at-ualberta-dot-ca
+
+It has been released under the Creative Commons Attribution 4.0 International
+license: http://creativecommons.org/licenses/by/4.0/ .
 """
 import argparse, math, time, sys
 sys.path.append(".")

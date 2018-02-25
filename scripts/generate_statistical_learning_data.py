@@ -1,6 +1,12 @@
 """
 A script for generating random data for word segmentation tasks / statistical
 learning.
+
+Author: Geoff Hollis
+email : hollis-at-ualberta-dot-ca
+
+It has been released under the Creative Commons Attribution 4.0 International
+license: http://creativecommons.org/licenses/by/4.0/ .
 """
 import argparse, sys, string, random
 

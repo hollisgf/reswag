@@ -4,7 +4,13 @@ classic form, described in Rescorla & Wagner (1972). The second its vector
 approximation, described in Hollis (under review). The vector approximation
 method uses a vector-based method that eliminates the need to update for 
 absent outcomes to reduce the computational cost of the model. However, it does
-sacrifice some accuracy in learned association strengths as a consequecne.
+sacrifice some accuracy in learned association strengths as a consequence.
+
+Author: Geoff Hollis
+email : hollis-at-ualberta-dot-ca
+
+It has been released under the Creative Commons Attribution 4.0 International
+license: http://creativecommons.org/licenses/by/4.0/ .
 """
 import pickle, numpy as np
 
