@@ -30,6 +30,9 @@ boundaries. To train a model, run:
 
 python scripts/train_segmentation_ndl.py data/statistical_learning1.txt --unit=letter --window=2 --readmode=doc --space_char="#" --newline_char="" --out=MyModel
 
+Add the flag --modeltype=rw to run with the classic R-W model rather than the
+vector approximation.
+
 For additional script arguments, see:
 python scripts/train_segmentation_ndl.py -h
 
@@ -54,6 +57,9 @@ the amount of bottom-up support available for a string of letters being a word.
 To train a model, run:
 
 python scripts/simulate_ldrts.py data/simple_corpus.txt --out=MyModel
+
+Add the flag --modeltype=rw to run with the classic R-W model rather than the
+vector approximation.
 
 For additional script arguments, see:
 python scripts/train_segmentation_ndl.py -h
