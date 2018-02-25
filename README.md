@@ -1,7 +1,7 @@
 # Dependencies
 This software requires that you install numpy and scipy:
-http://www.numpy.org/
-https://www.scipy.org/
+ - http://www.numpy.org/
+ - https://www.scipy.org/
 
 # The Rescorla-Wagner Model And Its Vector Approximation
 This package provides two implementations of the Rescorla-Wagner model. The
