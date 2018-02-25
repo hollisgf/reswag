@@ -1,4 +1,9 @@
-# reswag
+# Dependencies
+This software requires that you install numpy and scipy:
+http://www.numpy.org/
+https://www.scipy.org/
+
+# The Rescorla-Wagner Model And Its Vector Approximation
 This package provides two implementations of the Rescorla-Wagner model. The
 first is its classic form, described in Rescorla & Wagner (1972). The second
 its vector approximation, described in Hollis (under review). The vector
