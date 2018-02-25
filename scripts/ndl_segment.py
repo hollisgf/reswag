@@ -14,15 +14,14 @@ import models.ndl_tools as ndl_tools, models.reswag as reswag
 
 def main():
     parser = argparse.ArgumentParser(description='Interface for performing segmentation with a R-W model trained as an NDL.')
-    parser.add_argument("model", type=str, help="path to R-W model.")
-    parser.add_argument("segmentation_threshold", type=float, default=None, help="How surprising does an event have to be to result in a segmentation?")
+    parser.add_argument("model", type=str, help="path to .rw or .rwv model that has been trained to do text segmentation.")
+    parser.add_argument("segmentation_threshold", type=float, default=None, help="How surprising does an event have to be to result in a segmentation? Values of 0.9 - 0.95 work for most real corpora; lower values are typically needed for artificial data.")
     parser.add_argument("corpora", type=str, nargs='*', help="Paths to .txt files containing corpora to segment.")
-    parser.add_argument("--modeltype", type=str, default="rwv", help="rw or rwv.")
-    parser.add_argument("--window", type=int, default=2, help="window size for predicting.")
-    parser.add_argument("--unit", type=str, default="ngram3", help="what is our cue unit; can be letter, ngramX or word.")
-    parser.add_argument("--readmode", type=str, default="line", help="read by lines or docs?")
-    parser.add_argument("--space_char", type=str, default="", help="what character should be use to represent spaces. Defaults to removing spaces.")
-    parser.add_argument("--newline_char", type=str, default="|", help="what character should be use to represent newlines.")
+    parser.add_argument("--window", type=int, default=2, help="window size for predicting. Default 2.")
+    parser.add_argument("--unit", type=str, default="ngram3", help="what is our cue unit; can be letter, ngramX or word. Default ngram3.")
+    parser.add_argument("--readmode", type=str, default="line", choices=["line", "doc"], help="read by lines or docs? Default line.")
+    parser.add_argument("--space_char", type=str, default="#", help="what character should be use to represent spaces? Defaults to #. Spaces can be removed with the empty string.")
+    parser.add_argument("--newline_char", type=str, default="|", help="what character should be use to represent newlines. Defaults to |. Newlines can be removed with the empty string")
 
     args = parser.parse_args()
 
