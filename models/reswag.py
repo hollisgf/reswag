@@ -163,7 +163,6 @@ class ResWag:
         learning_rate = self.alpha * self.beta
         errors        = (lamda_vector - Vtot)
         deltas        = learning_rate * errors
-        print "--dsum=", deltas.sum(), cues, outcomes
         
         # update association strengths for cues that appeared
         for cue in cues:
@@ -400,9 +399,6 @@ class VectorResWag:
         # calculate error vector, and learning delta
         error         = (lamda - V)
         delta         = self.alpha * self.beta * error# * magnitude_correction
-
-        print "--dsum=", delta.sum(), cues, outcomes
-
         
         # update our cue vectors
         for cue in cues:
