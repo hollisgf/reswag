@@ -11,6 +11,8 @@ license: http://creativecommons.org/licenses/by/4.0/ .
 import sys, argparse
 sys.path.append(".")
 import models.ndl_tools as ndl_tools, models.reswag as reswag
+import analyses.surprise
+
 
 def main():
     parser = argparse.ArgumentParser(description='Interface for performing segmentation with a R-W model trained as an NDL.')
@@ -42,17 +44,9 @@ def main():
         nsize = 1
         unit  = "ngram"
         
-    # create our segmenter
-    segmenter = ndl_tools.LineSegmenter(model, args.window, nsize, segmentation_threshold=args.segmentation_threshold)
-
-    # run the segmentation test
-    buf_size = args.window + nsize
-    buf      = ("#" if args.space_char=="" else args.space_char) * buf_size
+    # run our segmenter over each corpus and print results
     for corpus in args.corpora:
-        for line in ndl_tools.FileReader(corpus, space_char=args.space_char, newline_char=args.newline_char, readmode=args.readmode, head_buffer=buf, tail_buffer=buf):
-            print " ".join(segmenter.segment(line))
-    
-    
+        print analyses.surprise.segmentation(model, corpus=corpus, window=args.window, nsize=nsize, segmentation_threshold=args.segmentation_threshold, readmode=args.readmode, space_char=args.space_char, newline_char=args.newline_char)
 
 if __name__ == "__main__":
     sys.exit(main())

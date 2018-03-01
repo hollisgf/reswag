@@ -12,8 +12,8 @@ email : hollis-at-ualberta-dot-ca
 It has been released under the Creative Commons Attribution 4.0 International
 license: http://creativecommons.org/licenses/by/4.0/ .
 """
-import pickle, numpy as np
-
+import pickle, numpy as np, ndl_tools
+import scipy.spatial.distance as dist
 
 
 def vector_magnitude(vector):
@@ -31,11 +31,11 @@ class ResWag:
         self.beta  = beta
         self.lamda = lamda
         
-        # maps outcomes to vectors of cue weights
-        self.outcome_weights = { }
+        # maps cues to vectors of outcome associations
+        self.cue_associations = { }
 
-        # maps cues to indices, used to reference weights in outcome vectors
-        self.cue_indices = { }
+        # maps outcomes to indices, used to reference associations in cue vectors
+        self.outcome_indices = { }
 
         # used for training the model
         self.__zero_vector = np.zeros(0)
@@ -47,77 +47,73 @@ class ResWag:
     def load(fname):
         return pickle.load(open(fname,'r'))
 
+    @property
+    def cue_vectors(self):
+        return self.cue_associations
+    
     def cues(self):
-        return self.cue_indices.keys()
+        return self.cue_associations.keys()
 
     def outcomes(self):
-        return self.outcome_weights.keys()
+        return self.outcome_indices.keys()
     
-    def __resize_outcomes(self):
+    def __resize_cues(self):
         """Does as it says.
         """
-        newsize = len(self.cue_indices)
-        outcomes= self.outcome_weights.keys()
-        for outcome in outcomes:
-            weights = self.outcome_weights[outcome]
-            weights = np.append(weights, [0.])
-            self.outcome_weights[outcome] = weights
+        newsize = len(self.outcome_indices)
+        for cue in self.cues():
+            assocs = self.cue_associations[cue]
+            assocs = np.append(assocs, [0.] * (newsize - len(assocs)))
+            self.cue_associations[cue] = assocs
 
-        self.__zero_vector = np.zeros(len(self.cue_indices))
-        
-    def __create_cue(self, cue, resize=True):
-        """registers a new cue in the model. This requires expansion of the
-           outcome vectors and can be quite costly if called often. In practice,
-           all necessary cues should be created prior to model training. 
-           
-           Returns the cue's index, or -1 if no cue was created.
+        self.__zero_vector = np.zeros(len(self.outcome_indices))
+    
+    def __create_cue(self, cue):
+        """registers a new cue in the model.
         """
         cue_created = False
         try:
-            index = self.cue_indices[cue]
+            assocs = self.cue_associations[cue]
         except:
-            index = len(self.cue_indices)
-            self.cue_indices[cue] = index
+            self.cue_associations[cue] = np.zeros(len(self.outcome_indices))
             cue_created = True
-
-        # resize all of our outcome weight vectors
-        if resize and cue_created == True:
-            self.__resize_outcomes()
-
-        if cue_created:
-            return index
-        return -1
+        return cue_created
 
     def __create_cues(self, cues):
-        """creates multiple cues; a little faster for resizing than doing each
-           cue individually.
-        """
-        old_num_cues = len(self.cue_indices)
         for cue in cues:
-            self.__create_cue(cue, resize=False)
-
-        if old_num_cues < len(self.cue_indices):
-            self.__resize_outcomes()
-    
-    def __create_outcome(self, outcome):
-        """registers a new outcome in the model. This should NEVER be done
-           after model training has started. It will interfere with the model's
-           quality, since prior training events will not have been able to 
-           learn from negative evidence (the absence of an outcome). 
+            self.__create_cue(cue)
         
-           Returns True/False depending on whether the outcome was created
+    def __create_outcome(self, outcome, resize=True):
+        """registers a new outcome in the model. This should rarely be done on
+           the fly, because it requires expansion of the cue association 
+           vectors. Register all cues and outcomes prior to training.
         """
         outcome_created = False
         try:
-            weights = self.outcome_weights[outcome]
+            index = self.outcome_indices[outcome]
         except:
-            self.outcome_weights[outcome] = np.zeros(len(self.cue_indices))
+            index = len(self.outcome_indices)
+            self.outcome_indices[outcome] = index
             outcome_created = True
-        return outcome_created
+
+        # resize all of our outcome weight vectors
+        if resize and outcome_created == True:
+            self.__resize_cues()
+
+        if outcome_created:
+            return index
+        return -1
 
     def __create_outcomes(self, outcomes):
+        """creates multiple outcomes; a little faster for resizing than doing 
+           each outcome individually.
+        """
+        old_num_outcomes = len(self.outcome_indices)
         for outcome in outcomes:
-            self.__create_outcome(outcome)
+            self.__create_outcome(outcome, resize=False)
+
+        if old_num_outcomes < len(self.outcome_indices):
+            self.__resize_cues()
     
     def create_cues_and_outcomes(self, events):
         """populates cues and outcomes based on unique cues and outcomes in
@@ -130,8 +126,8 @@ class ResWag:
             unique_cues.update(cues)
             unique_outcomes.update(outcomes)
 
-        self.__create_cues(unique_cues)
         self.__create_outcomes(unique_outcomes)
+        self.__create_cues(unique_cues)
     
     def process_events(self, events):
         """events is an iterator over (cue,outcome) pairs. Processes each
@@ -147,39 +143,46 @@ class ResWag:
            also learning from negative evidence about absent outcomes. This is
            the heart of the R-W model.
         """
-        # build our update multiplier
-        update_vector  = self.__zero_vector
-        update_vector *= 0.0
+        # cues and outcomes only used once
+        cues     = set(cues)
+        outcomes = set(outcomes)
         
-        # find the weight indices to use for learning. Cues are only
-        # used once.
-        for cue in set(cues):
-            update_vector[self.cue_indices[cue]] = 1.0
-        present_outcomes = set(outcomes)
+        # build our update multiplier
+        lamda_vector  = self.__zero_vector
+        lamda_vector *= 0.0
+        
+        # find the outcome indices to use for learning.
+        for outcome in outcomes:
+            lamda_vector[self.outcome_indices[outcome]] = 1.0
 
-        # go over all outcomes and update weight vectors
+        # calculate outcome associations
+        assoc_vecs = [ self.cue_associations[cue] for cue in cues ]
+        Vtot       = np.sum(assoc_vecs, axis=0)
+
+        # calculate errors
         learning_rate = self.alpha * self.beta
-        for outcome in self.outcome_weights.keys():
-            weights = self.outcome_weights[outcome]
-            lamda   = self.lamda if outcome in present_outcomes else 0.0
-            activity= (weights * update_vector).sum()
-            
-            # save a little computation
-            if activity == lamda:
-                continue
-            
-            # calculate weight delta and update weights
-            delta    = learning_rate * (lamda - activity)
-            weights += delta * update_vector
+        errors        = (lamda_vector - Vtot)
+        deltas        = learning_rate * errors
+        print "--dsum=", deltas.sum(), cues, outcomes
+        
+        # update association strengths for cues that appeared
+        for cue in cues:
+            self.cue_associations[cue] += deltas
 
-    def activation(self, cues, outcome):
+    def activation(self, cues, outcomes):
         """Returns the activation of the outcome, given the cues.
         """
-        # remove duplicates
-        cues = set(cues)
+        if type(outcomes) == str:
+            outcomes = [ outcomes ]
         
-        indices = [ self.cue_indices[cue] for cue in cues ]
-        return self.outcome_weights[outcome][indices].sum()
+        # remove duplicates
+        cues  = set(cues)
+        
+        # calculate outcome associations
+        assoc_vecs = [ self.cue_associations[cue] for cue in cues ]
+        Vtot       = np.sum(assoc_vecs, axis=0)
+
+        return Vtot[[self.outcome_indices[outcome] for outcome in outcomes]].sum()
 
     def most_active(self, cues, topn=10):
         """returns the topn most active outcomes, given the set of cues.
@@ -188,10 +191,13 @@ class ResWag:
         # remove duplicates
         cues = set(cues)
         
+        # calculate outcome associations
+        assoc_vecs = [ self.cue_assocations[cue] for cue in cues ]
+        Vtot       = np.sum(assoc_vecs, axis=0)
+        
         activities = { }
-        indices = [ self.cue_indices[cue] for cue in cues ]
-        for outcome,vec in self.outcome_weights.iteritems():
-            activities[outcome] = vec[indices].sum()
+        for outcome, index in self.outcome_indices.iteritems():
+            activities[outcome] = Vtot[index]
 
         outcomes = activities.keys()
         outcomes.sort(lambda a,b: cmp(activities[a], activities[b]), reverse=True)
@@ -221,7 +227,7 @@ class VectorResWag:
        Model is fully described in:
        Hollis (under review).
     """
-    def __init__(self, alpha=0.1, beta=1.0, lamda=1.0, vectorlength=1000, outcomes_also_cues=False, force_orthogonal=False):
+    def __init__(self, alpha=0.1, beta=1.0, lamda=1.0, vectorlength=1000, outcomes_also_cues=False, vectortype="random"):
         """creates a new model. vectorlength must be sufficiently long
            so that two randomly generated and normalized vectors are highly
            unlikely to have incidental correlation. The longer the vectors, the
@@ -232,8 +238,11 @@ class VectorResWag:
         self.alpha = alpha
         self.beta  = beta
         self.lamda = lamda # determines vector magnitude in the VNDL model
-        self.vectorlength = vectorlength 
-        self.force_orthogonal = force_orthogonal
+        self.vectorlength = vectorlength
+        self.vectortype = vectortype
+
+        if vectortype not in ["random", "ortho", "sensory"]:
+            raise Exception("Unrecognized outcome vector type, %s." % vectortype)
         
         # are outcomes static, or can their vectors be updated through learning
         self.outcomes_also_cues = outcomes_also_cues
@@ -241,6 +250,12 @@ class VectorResWag:
         # table of outcome and cue vectors
         self.outcome_vectors = { }
         self.__cue_vectors   = { }
+
+        # if sensory vectors are used, build up vectors for outcomes from
+        # vectors specific to shorter substrings of the outcome.
+        self.vectortype = vectortype
+        if vectortype == "sensory":
+            self.sense_table = { }
         
     def save(self, fname):
         pickle.dump(self, open(fname,'w'))
@@ -260,10 +275,51 @@ class VectorResWag:
 
     def outcomes(self):
         return self.outcome_vectors.keys()
+
+    def __create_vector(self, outcome):
+        """creates and registers an outcome vector
+        """
+        {
+            "random" : self.__create_random_vector,
+            "ortho"  : self.__create_orthogonal_vector,
+            "sensory": self.__create_sensory_vector,
+        }[self.vectortype](outcome)
     
-    def __generate_vector(self, length, magnitude=None):
-        vec = np.float64(np.random.randn(length))
-        return (magnitude if magnitude is not None else self.lamda) * (vec / np.linalg.norm(vec))
+    def __create_sensory_vector(self, outcome):
+        # each ngram from length 1-3 contributes to the sensory vector
+        str_for_cues = "#" + outcome + "#"
+        substrings = [ ]
+        for i in xrange(1, min(3, len(str_for_cues)) + 1):
+            substrings.extend(ndl_tools.generate_ngrams(str_for_cues, i))
+        substrings = set(substrings)
+        substrings.remove("#")
+
+        # sum up all of the subparts
+        vec = np.zeros(self.vectorlength)
+        for string in substrings:
+            try:
+                vec += self.sense_table[string]
+            except:
+                newsubvec = np.float64(np.random.randn(self.vectorlength))
+                vec      += newsubvec
+                self.sense_table[string] = newsubvec
+
+        # normalize and save
+        vec = self.lamda * (vec / np.linalg.norm(vec))
+        self.outcome_vectors[outcome] = vec
+    
+    def __create_random_vector(self, outcome):
+        vec = np.float64(np.random.randn(self.vectorlength))
+        vec = self.lamda * (vec / np.linalg.norm(vec))
+        self.outcome_vectors[outcome] = vec
+        
+    def __create_orthogonal_vector(self, outcome):
+        if len(self.outcome_vectors) >= self.vectorlength:
+            raise Exception("Cannot create new vector; maximum number of orthogonal vectors already created.")
+
+        vec = np.zeros(self.vectorlength)
+        vec[len(self.outcome_vectors)] = 1.0
+        self.outcome_vectors[outcome]  = vec
     
     def __create_cue(self, cue):
         """registers a new cue in the model.
@@ -273,7 +329,6 @@ class VectorResWag:
                 self.__create_outome(cue)
             else:
                 self.cue_vectors[cue] = np.zeros(self.vectorlength)
-                #self.__generate_vector(self.vectorlength)
 
     def __create_cues(self, cues):
         for cue in cues:
@@ -284,15 +339,7 @@ class VectorResWag:
         """
         if outcome in self.outcome_vectors:
             return
-        
-        if self.force_orthogonal:
-            if len(self.outcome_vectors) >= self.vectorlength:
-                raise Exception("Cannot create new vector; maximum number of orthogonal vectors already created.")
-            vec = np.zeros(self.vectorlength)
-            vec[len(self.outcome_vectors)] = 1.0
-            self.outcome_vectors[outcome]  = vec
-        else:
-            self.outcome_vectors[outcome] = self.__generate_vector(self.vectorlength)
+        self.__create_vector(outcome)
 
     def __create_outcomes(self, outcomes):
         for outcome in outcomes:
@@ -323,9 +370,9 @@ class VectorResWag:
         """processes one learning event, associating cues with outcomes.
         """
         # no duplicates
-        present_outcomes = set(outcomes)
-        present_cues     = set(cues)
-
+        outcomes = set(outcomes)
+        cues     = set(cues)
+        
         # make sure our cues and outcomes exist
         for cue in cues:
             if cue not in self.cue_vectors:
@@ -352,26 +399,41 @@ class VectorResWag:
         
         # calculate error vector, and learning delta
         error         = (lamda - V)
-        delta         = self.alpha * self.beta * error * magnitude_correction
+        delta         = self.alpha * self.beta * error# * magnitude_correction
 
+        print "--dsum=", delta.sum(), cues, outcomes
+
+        
         # update our cue vectors
         for cue in cues:
             self.cue_vectors[cue] += delta
 
-    def activation(self, cues, outcome):
-        """Returns the activation of the outcome, given the cues.
+    def cue_magnitude(self, cues):
+        """returns the vector magnitude of the cue cues
         """
+        if type(cues) == str:
+            cues = [ cues ]
+
+        vecs = [ self.cue_vectors[cue] for cue in cues ]
+        vec  = np.sum(vecs, axis=0)
+        return vector_magnitude(vec)
+
+    def activation(self, cues, outcomes):
+        """returns the activation of the outcomes, given the cues
+        """
+        if type(outcomes) == str:
+            outcomes = [ outcomes ]
+        
         # remove duplicates
         cues        = set(cues)
 
         # collapse cue vectors
         cue_vecs    = [ self.cue_vectors[cue] for cue in cues ]
         cue_vec     = np.sum(cue_vecs, axis=0, dtype=np.float64)
-        outcome_vec = self.outcome_vectors[outcome]
+        outcome_vecs= [ self.outcome_vectors[outcome] for outcome in outcomes ]
+        outcome_vec = np.sum(outcome_vecs, axis=0, dtype=np.float64)
 
-        activation = (cue_vec * np.sign(outcome_vec)).sum()
-        lamda      = np.abs(outcome_vec).sum()
-        return activation / lamda
+        return (1.0 - dist.cosine(cue_vec, outcome_vec)) * vector_magnitude(cue_vec)
 
     def most_active(self, cues, topn=10):
         """returns the topn most active outcomes, given the set of cues.

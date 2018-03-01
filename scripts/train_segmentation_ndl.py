@@ -40,6 +40,7 @@ def main():
     parser.add_argument("--out", type=str, default=None, help="location to save the model to.")
     parser.add_argument("--test",type=str, default=None, help="path to a test corpus; if None, use first training corpus.")
     parser.add_argument("--vectorlength", type=int, default=300, help="only used for vector model; species vector length. Defaults to 300.")
+    parser.add_argument("--vectortype", type=str, default="random", choices=["random", "ortho", "sensory"], help="What is our generation method for vectors? Random values, orthogonal, or sensory (tries to preserve similarities between words as vector correlations). Default random.")
     parser.add_argument("--outcomes_also_cues", type=str2bool, default=False, help="Can outcome vectors also be updated through learning? Relevant only for VNDL")
     parser.add_argument("--segmentation_threshold", type=float, default=None, help="How surprising does an event have to be to result in a segmentation? If not specified, try to find a good threshold automatically.")
 
@@ -58,7 +59,7 @@ def main():
     if args.modeltype == "rw":
         model = reswag.ResWag(alpha=args.alpha, beta=args.beta)
     else:
-        model = reswag.VectorResWag(alpha=args.alpha, beta=args.beta, vectorlength=args.vectorlength, outcomes_also_cues=args.outcomes_also_cues)
+        model = reswag.VectorResWag(alpha=args.alpha, beta=args.beta, vectorlength=args.vectorlength, outcomes_also_cues=args.outcomes_also_cues, vectortype=args.vectortype)
         
     # build our iterator information
     window     = args.window

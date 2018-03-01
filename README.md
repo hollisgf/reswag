@@ -67,7 +67,7 @@ Add the flag --modeltype=rw to run with the classic R-W model rather than the
 vector approximation.
 
 For additional script arguments, see:
-python scripts/train_segmentation_ndl.py -h
+python scripts/simulate_ldrts.py -h
 
 The command will create three files:
   - MyModel.rwv : a binary copy of the trained model that can be reloaded with pickle

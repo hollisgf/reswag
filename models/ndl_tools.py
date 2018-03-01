@@ -164,20 +164,17 @@ class ForwardPredictionChannel(ExperienceChannel):
         buf      = ""
         buf_size = self.window + self.nsize
         if len(self.space_char) > 0:
-            buf  = self.space_char * buf_size
-        
+            buf = self.space_char * buf_size
+            
         for corpus in self.corpora:
             for line in FileReader(corpus, readmode=self.readmode, space_char=self.space_char, newline_char=self.newline_char, head_buffer=buf, tail_buffer=buf):
-                # turn the sequence into words
+                
+                # turn the sequence into words if needed
                 if self.unit == 'word':
                     line = line.split()
-                # otherwise, we need to do some processing
-                else:        
-                    # convert the sequence into ngrams
-                    if self.unit == 'ngram':
-                        line = generate_ngrams(line, n=self.nsize)
-                    else:
-                        line = list(line)
+                else:
+                    # convert the sequence into ngrams if necessary
+                    line = generate_ngrams(line, n=self.nsize)
         
                 # now iterate over the sequence and return our units
                 if self.window >= len(line):
@@ -193,8 +190,9 @@ class NgramToWordChannel(ExperienceChannel):
        ngrams spanning that word, and the word is the outcome. Ignore any
        words in the channel with occurrences < mincount.
     """
-    def __init__(self, corpora, maxgrain, mincount=0, flanking_spaces=True, space_char="#"):
+    def __init__(self, corpora, mingrain, maxgrain, mincount=0, flanking_spaces=True, space_char="#"):
         self.corpora  = corpora
+        self.mingrain = mingrain
         self.maxgrain = maxgrain
         self.flanking_spaces = flanking_spaces
         self.space_char = space_char
@@ -234,14 +232,16 @@ class NgramToWordChannel(ExperienceChannel):
                     
                     if self.flanking_spaces:
                         word = self.space_char + word + self.space_char
+                        
                     try:
                         cues = self.cue_map[outcome]
                     except:
                         cues = [ ]
-                        for i in xrange(self.maxgrain):
-                            cues.extend(generate_ngrams(word, i+1))
-                        self.cue_map[outcome] = cues
+                        for i in xrange(self.mingrain, self.maxgrain+1):
+                            cues.extend(generate_ngrams(word, i))
                         # ignore single spaces as cues
+                        cues = set(cues)
                         if self.space_char in cues:
                             cues.remove(self.space_char)
+                        self.cue_map[outcome] = cues
                     yield (cues, (outcome,))

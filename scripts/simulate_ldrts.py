@@ -12,7 +12,7 @@ email : hollis-at-ualberta-dot-ca
 It has been released under the Creative Commons Attribution 4.0 International
 license: http://creativecommons.org/licenses/by/4.0/ .
 """
-import argparse, math, time, sys
+import argparse, sys
 sys.path.append(".")
 import models.reswag as reswag, models.ndl_tools as ndl_tools
 
@@ -33,9 +33,9 @@ def main():
     parser.add_argument("--flanking_spaces", type=str2bool, default=True, choices=[True,False], help="Should we use flanking spaces? e.g., dog -> #dog#. Default True.")
     parser.add_argument("--out", type=str, default=None, help="location to save the model to.")
     parser.add_argument("--vectorlength", type=int, default=300, help="only used for vector model; species vector length. Default 300.")
-    parser.add_argument("--orthogonal", type=str2bool, default=False, choices=[True,False], help="Are outcome vectors forced to be orthogonal? Default False.")
+    parser.add_argument("--vectortype", type=str, default="random", choices=["random", "ortho", "sensory"], help="What is our generation method for vectors? Random values, orthogonal, or sensory (tries to preserve similarities between words as vector correlations). Default random.")
     parser.add_argument("--outcomes_also_cues", type=str2bool, default=False, choices=[True,False], help="Can outcome vectors also be updated through learning? Relevant only for RWV. Default False")
-    parser.add_argument("--cuegrain", type=int, default=2, help="what is the maximum grain of our cue size. 1 = letters, 2 = letters+bigrams, etc... . Default 2.")
+    parser.add_argument("--cuegrain", type=str, default="1-2", help="what is the grain range for cues. 1 = letters, 2 = bigrams, etc... . Can specify range, e.g., 1-3. Default 1-2.")
     parser.add_argument("--iterations", type=int, default=1, help="how many passes over the corpus do we make? Default 1.")
     parser.add_argument("--mincount", type=int, default=0, help="how many times does an outcome need to occur to be considered for training. Default 0.")
 
@@ -53,14 +53,23 @@ def main():
     if args.modeltype == "rw":
         model = reswag.ResWag(alpha=args.alpha, beta=args.beta)
     else:
-        model = reswag.VectorResWag(alpha=args.alpha, beta=args.beta, vectorlength=args.vectorlength, outcomes_also_cues=args.outcomes_also_cues, force_orthogonal=args.orthogonal)
+        model = reswag.VectorResWag(alpha=args.alpha, beta=args.beta, vectorlength=args.vectorlength, outcomes_also_cues=args.outcomes_also_cues, vectortype=args.vectortype)
         
     # build our iterator information
+    if "-" in args.cuegrain:
+        mingrain, maxgrain = args.cuegrain.split("-")
+        mingrain = int(mingrain)
+        maxgrain = int(maxgrain)
+        if maxgrain < mingrain:
+            mingrain, maxgrain = maxgrain, mingrain
+    else:
+        mingrain = maxgrain = int(args.cuegrain)
+    
     cuegrain        = args.cuegrain
     flanking_spaces = args.flanking_spaces
 
     # create our iterator
-    events = ndl_tools.NgramToWordChannel(corpora=args.corpora, maxgrain=cuegrain, flanking_spaces=flanking_spaces, mincount=args.mincount)
+    events = ndl_tools.NgramToWordChannel(corpora=args.corpora, mingrain=mingrain, maxgrain=maxgrain, flanking_spaces=flanking_spaces, mincount=args.mincount)
     
     # train and save the model
     for i in xrange(args.iterations):
